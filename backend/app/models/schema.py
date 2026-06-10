@@ -56,5 +56,5 @@ class KnowledgeChunk(Base):
     id = Column(Integer, primary_key=True, index=True)
     source_doc = Column(String, nullable=False)
     chunk_text = Column(Text, nullable=False)
-    embedding = Column(Vector(1536)) # Fixed vector dimensions matching standard OpenAI Ada/Text-3 layouts
+    embedding = Column(Vector(768)) # Fixed vector dimensions matching standard Gemini flash layouts
     created_at = Column(DateTime(timezone=True), server_default=func.now())
