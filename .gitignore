@@ -1,0 +1,60 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Node & React / Frontend
+node_modules/
+dist/
+build/
+.npm
+.eslintcache
+.stylelintcache
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Database / Local Data (Just in case you store local files)
+*.sqlite3
+*.db
+/data/**/*.json
+!/data/email-data-advanced.json
+/data/knowledge_base/
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
