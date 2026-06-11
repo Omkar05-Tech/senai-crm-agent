@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.email import EmailPayload
-from app.models.schema import Email, Thread, Contact
+from app.models.schema import Email, Thread, Contact, Action
 from app.services.heuristics import run_heuristic_pre_filter
 from app.services.intelligence import analyze_email_intelligence
+from app.agent.workflow import run_agent_loop
 
 router = APIRouter()
 
@@ -70,6 +71,26 @@ def ingest_email(payload: EmailPayload, db: Session = Depends(get_db)):
     
     try:
         db.commit()
+        db.refresh(new_email) # <-- We need this to get the new email ID from the database
+        
+        # --- NEW AGENT EXECUTION BLOCK ---
+        # 1. Trigger the AI Agent to process the email body
+        agent_result = run_agent_loop(
+            email_body=new_email.body, 
+            thread_id=new_email.thread_id, 
+            db=db
+        )
+        
+        # 2. Save the Agent's Chain-of-Thought log to the database
+        action_record = Action(
+            email_id=new_email.id,
+            action_type=agent_result.get("final_action", "unknown"),
+            agent_reasoning_log=agent_result.get("reasoning_log", [])
+        )
+        db.add(action_record)
+        db.commit()
+        # ---------------------------------
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

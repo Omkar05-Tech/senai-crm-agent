@@ -11,4 +11,19 @@ services:
     env_file:
       - .env
     environment:
-      - WATCHFILES_FORCE_POLLING=true # Ensures fast hot-reloads within containers
+      - WATCHFILES_FORCE_POLLING=true
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - backend
