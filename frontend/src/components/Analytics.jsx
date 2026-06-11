@@ -19,72 +19,68 @@ export default function Analytics() {
   }, []);
 
   if (!stats) {
-    return <div className="p-10 flex justify-center items-center h-full">Loading telemetry...</div>;
+    return <div className="p-10 flex justify-center items-center h-full text-slate-400 font-medium">Loading telemetry...</div>;
   }
 
   return (
-    <div className="flex-1 p-8 bg-gray-50 overflow-y-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">System Analytics</h1>
+    <div className="flex-1 p-10 bg-slate-50 overflow-y-auto">
+      <h1 className="text-3xl font-extrabold text-slate-900 mb-8 tracking-tight">System Analytics</h1>
 
-      {/* KPI Cards */}
+      {/* KPI Cards with Hover Lift */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
         
-        {/* Total Volume */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-          <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/60 flex items-center space-x-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-default">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
             <Mail className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Total Volume</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            <p className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">Total Volume</p>
+            <p className="text-3xl font-extrabold text-slate-900">{stats.total}</p>
           </div>
         </div>
 
-        {/* Escalation Rate */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-          <div className="p-3 bg-red-100 text-red-600 rounded-lg">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/60 flex items-center space-x-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-default">
+          <div className="p-3 bg-red-50 text-red-600 rounded-xl">
             <AlertOctagon className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Escalation Rate</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.escalation_rate}%</p>
+            <p className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">Escalation Rate</p>
+            <p className="text-3xl font-extrabold text-slate-900">{stats.escalation_rate}%</p>
           </div>
         </div>
 
-        {/* Avg Sentiment */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-          <div className="p-3 bg-green-100 text-green-600 rounded-lg">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/60 flex items-center space-x-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-default">
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
             <Activity className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Avg Sentiment</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.avg_sentiment}</p>
+            <p className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">Avg Sentiment</p>
+            <p className="text-3xl font-extrabold text-slate-900">{stats.avg_sentiment}</p>
           </div>
         </div>
         
-        {/* API Health */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
-          <div className="p-3 bg-indigo-100 text-indigo-600 rounded-lg">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/60 flex items-center space-x-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-default">
+          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Agent Health</p>
-            <p className="text-2xl font-bold text-green-500">99.9%</p>
+            <p className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">Agent Health</p>
+            <p className="text-3xl font-extrabold text-emerald-500">99.9%</p>
           </div>
         </div>
 
       </div>
 
       {/* Charts Section */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-bold text-gray-800 mb-6">Traffic by Category</h2>
-        <div className="h-80 w-full">
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200/60">
+        <h2 className="text-lg font-extrabold text-slate-900 mb-6 tracking-tight">Traffic by Category</h2>
+        <div className="h-[350px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={stats.categories}>
-              <XAxis dataKey="name" stroke="#8884d8" />
-              <YAxis />
-              <Tooltip cursor={{ fill: '#f3f4f6' }} />
-              <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
+              <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

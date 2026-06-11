@@ -6,13 +6,11 @@ export default function AgentPanel({ email }) {
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch the reasoning logs whenever a new email is clicked
   useEffect(() => {
     const fetchLogs = async () => {
       if (!email) return;
       setIsLoading(true);
       try {
-        // We use the database 'id' to fetch the associated actions
         const data = await dashboardService.getAgentLogs(email.id);
         setLogs(data);
       } catch (error) {
@@ -24,98 +22,88 @@ export default function AgentPanel({ email }) {
     fetchLogs();
   }, [email]);
 
-  // Empty State
   if (!email) {
     return (
-      <div className="flex flex-col h-full items-center justify-center bg-white">
-        <BrainCircuit className="w-12 h-12 text-gray-200 mb-3" />
-        <p className="text-gray-400 font-medium">Agent Telemetry Offline</p>
+      <div className="flex flex-col h-full items-center justify-center bg-transparent">
+        <BrainCircuit className="w-12 h-12 text-slate-200 mb-3" />
+        <p className="text-slate-400 font-bold tracking-tight">Agent Telemetry Offline</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-white font-sans border-l border-gray-200">
+    <div className="flex flex-col h-full bg-white font-sans">
       
-      {/* Header Panel */}
-      <div className="p-5 border-b border-gray-100 bg-gray-900 text-white shadow-md z-10">
+      {/* Premium Terminal Header */}
+      <div className="p-5 border-b border-slate-800 bg-slate-900 text-white shadow-md z-10 relative">
         <div className="flex items-center space-x-2 mb-1">
-          <Terminal className="w-5 h-5 text-green-400" />
-          <h2 className="text-lg font-bold tracking-wide">ReAct Engine Log</h2>
+          <Terminal className="w-5 h-5 text-emerald-400" />
+          <h2 className="text-lg font-extrabold tracking-tight">ReAct Engine Log</h2>
         </div>
-        <p className="text-xs text-gray-400 flex items-center mt-1">
-          <Activity className="w-3 h-3 mr-1 animate-pulse text-green-500" />
+        <p className="text-xs text-slate-400 flex items-center mt-1 font-medium tracking-wide">
+          <Activity className="w-3 h-3 mr-1.5 animate-pulse text-emerald-500" />
           Live session telemetry
         </p>
       </div>
 
       {/* Log Feed */}
-      <div className="flex-1 overflow-y-auto p-5 bg-[#fafafa]">
+      <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
         {isLoading ? (
-          <div className="text-sm text-gray-500 animate-pulse flex items-center">
-            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+          <div className="text-sm font-medium text-slate-500 flex items-center justify-center h-20">
+            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-3"></div>
             Extracting memory trace...
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-sm text-gray-400 italic text-center mt-10 border border-dashed border-gray-300 p-6 rounded-lg bg-white">
+          <div className="text-sm font-medium text-slate-400 italic text-center mt-10 border border-dashed border-slate-300 p-6 rounded-xl bg-white">
             No agent actions recorded for this email.
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Because our backend might return the raw JSON in different formats depending on how we saved it,
-              we safely map over the array of action records. 
-            */}
             {logs.map((actionRecord, idx) => {
-              // Extract the array of reasoning steps from the database column
               const reasoningSteps = actionRecord.agent_reasoning_log || [];
 
               return (
-                <div key={idx} className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
+                <div key={idx} className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-slate-200 before:via-slate-200 before:to-transparent">
                   
                   {reasoningSteps.map((step, stepIdx) => (
-                    <div key={stepIdx} className="relative flex items-start space-x-3 mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm transition-all hover:shadow-md">
+                    <div key={stepIdx} className="relative flex items-start space-x-4 mb-6 bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm transition-all hover:shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:-translate-y-0.5">
                       
                       {/* Left Timeline Dot */}
-                      <div className="relative flex-shrink-0 w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white z-10">
+                      <div className="relative flex-shrink-0 w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 rounded-full flex items-center justify-center font-extrabold text-xs ring-4 ring-white shadow-sm z-10">
                         {step.step + 1}
                       </div>
                       
-                      {/* Step Content */}
                       <div className="flex-1 min-w-0">
-                        {/* Thought */}
                         {step.thought && (
-                          <div className="mb-3 text-sm text-gray-600 italic">
-                            <span className="font-semibold text-gray-800 not-italic mr-2">Thought:</span>
+                          <div className="mb-4 text-[14px] text-slate-600 leading-relaxed">
+                            <span className="font-bold text-slate-800 mr-2">Thought:</span>
                             "{step.thought}"
                           </div>
                         )}
                         
-                        {/* Action Tool Trigger */}
                         {step.action && (
-                          <div className="mb-3">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          <div className="mb-4">
+                            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-100/50">
                               Function Call: {step.action}()
                             </span>
                             {step.input && (
-                              <div className="mt-1 ml-2 text-xs font-mono text-gray-500 bg-gray-50 p-2 rounded border border-gray-100">
+                              <div className="mt-2 ml-2 text-xs font-mono text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 shadow-inner">
                                 {step.input}
                               </div>
                             )}
                           </div>
                         )}
 
-                        {/* Observation/System Feedback */}
                         {step.observation && (
-                          <div className="mt-2 text-sm bg-gray-900 text-green-400 p-3 rounded-lg font-mono leading-relaxed overflow-x-auto border border-gray-800">
-                            <span className="text-gray-500 mr-2 text-xs uppercase tracking-wider block mb-1">System Observation:</span>
+                          <div className="mt-3 text-sm bg-slate-900 text-emerald-400 p-4 rounded-xl font-mono leading-relaxed overflow-x-auto border border-slate-800 shadow-inner">
+                            <span className="text-slate-500 mr-2 text-[10px] uppercase tracking-widest font-bold block mb-1.5">System Observation:</span>
                             {step.observation}
                           </div>
                         )}
                         
-                        {/* Error Handling */}
                         {step.error && (
-                          <div className="mt-2 text-sm bg-red-50 text-red-700 p-3 rounded-lg font-mono border border-red-200 flex items-start">
-                            <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
+                          <div className="mt-3 text-sm bg-red-50 text-red-700 p-4 rounded-xl font-mono border border-red-100 flex items-start shadow-sm">
+                            <AlertTriangle className="w-4 h-4 mr-2.5 flex-shrink-0 mt-0.5 text-red-500" />
                             {step.error}
                           </div>
                         )}
@@ -125,9 +113,9 @@ export default function AgentPanel({ email }) {
 
                   {/* Final Output Badge */}
                   {actionRecord.action_type && (
-                    <div className="flex items-center justify-center mt-6 z-10 relative">
-                       <div className="bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-bold flex items-center shadow-sm border border-green-200">
-                         <CheckCircle2 className="w-4 h-4 mr-2" />
+                    <div className="flex items-center justify-center mt-8 z-10 relative">
+                       <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 px-5 py-2.5 rounded-full text-[13px] font-extrabold flex items-center shadow-sm border border-emerald-200">
+                         <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600" />
                          Final Action: {actionRecord.action_type}
                        </div>
                     </div>

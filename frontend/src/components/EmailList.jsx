@@ -2,63 +2,61 @@ import React from 'react';
 import { Tag, ShieldAlert } from 'lucide-react';
 
 export default function EmailList({ emails, selectedEmail, onSelect }) {
-  // If the backend hasn't returned data yet, or the database is empty
   if (!emails || emails.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-500 text-sm">
-        No emails found in the database.
+      <div className="p-10 flex flex-col items-center justify-center text-slate-400">
+        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+          <Tag className="w-5 h-5 text-slate-300" />
+        </div>
+        <p className="text-sm font-medium">Inbox is empty.</p>
       </div>
     );
   }
 
   return (
-    <div className="divide-y divide-gray-200">
+    <div className="divide-y divide-slate-100 p-2 space-y-1">
       {emails.map((email) => {
-        // Check if this card is the currently clicked one
         const isSelected = selectedEmail?.message_id === email.message_id;
         
-        // Dynamically style the urgency badge based on the AI's decision
-        let urgencyColor = "bg-gray-100 text-gray-800 border-gray-200";
-        if (email.urgency === "High") urgencyColor = "bg-orange-100 text-orange-800 border-orange-200";
-        if (email.urgency === "Critical") urgencyColor = "bg-red-100 text-red-800 border-red-200";
-        if (email.urgency === "Low") urgencyColor = "bg-green-100 text-green-800 border-green-200";
+        // Refined Badge Colors
+        let urgencyColor = "bg-slate-100 text-slate-600 border-slate-200/60";
+        if (email.urgency === "High") urgencyColor = "bg-orange-50 text-orange-700 border-orange-200/60 ring-1 ring-orange-600/10";
+        if (email.urgency === "Critical") urgencyColor = "bg-red-50 text-red-700 border-red-200/60 ring-1 ring-red-600/10 shadow-sm shadow-red-100";
+        if (email.urgency === "Low") urgencyColor = "bg-emerald-50 text-emerald-700 border-emerald-200/60";
 
         return (
           <div 
             key={email.message_id}
             onClick={() => onSelect(email)}
-            className={`p-4 cursor-pointer transition-colors duration-150 border-l-4 ${
+            // Here is the magic Tailwind transition: hover:shadow-md and hover:-translate-y-0.5
+            className={`p-4 rounded-xl cursor-pointer transition-all duration-200 ease-out border ${
               isSelected 
-                ? 'bg-blue-50 border-blue-600' // Highlight if selected
-                : 'bg-white border-transparent hover:bg-gray-50'
+                ? 'bg-blue-50/80 border-blue-200 ring-1 ring-blue-500/20 shadow-sm' 
+                : 'bg-white border-transparent hover:border-slate-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:-translate-y-0.5'
             }`}
           >
-            {/* Top Row: Sender & Urgency Badge */}
-            <div className="flex justify-between items-start mb-1">
-              <div className="text-sm font-semibold text-gray-900 truncate pr-2">
+            <div className="flex justify-between items-start mb-1.5">
+              <div className="text-[13px] font-bold text-slate-900 truncate pr-2 tracking-tight">
                 {email.sender}
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${urgencyColor}`}>
+              <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold ${urgencyColor}`}>
                 {email.urgency || "Unrated"}
               </span>
             </div>
             
-            {/* Subject Line */}
-            <div className="text-sm text-gray-800 font-medium mb-2 truncate">
+            <div className={`text-[14px] mb-3 truncate leading-snug ${isSelected ? 'text-blue-900 font-semibold' : 'text-slate-600 font-medium'}`}>
               {email.subject || "No Subject"}
             </div>
             
-            {/* Bottom Row: AI Category & Escalate Warning */}
             <div className="flex items-center justify-between">
-              <span className="inline-flex items-center text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                <Tag className="w-3 h-3 mr-1" />
+              <span className="inline-flex items-center text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-200/60">
+                <Tag className="w-3 h-3 mr-1.5 opacity-70" />
                 {email.category || "Uncategorized"}
               </span>
               
-              {/* Only show this warning if the AI flagged it for a human */}
               {email.requires_human && (
-                <span className="flex items-center text-xs text-red-600 font-bold">
-                  <ShieldAlert className="w-3 h-3 mr-1" />
+                <span className="flex items-center text-[11px] text-red-600 font-bold bg-red-50 px-2 py-1 rounded-md border border-red-100">
+                  <ShieldAlert className="w-3 h-3 mr-1.5" />
                   Human Req
                 </span>
               )}
