@@ -28,6 +28,12 @@ export const dashboardService = {
   ingestTestEmail: async (payload) => {
     const response = await apiClient.post('/ingest', payload);
     return response.data;
+  },
+
+  // 4. Fetch metrics for the Analytics page
+  getStats: async () => {
+    const response = await apiClient.get('/dashboard/stats');
+    return response.data;
   }
 };
 
