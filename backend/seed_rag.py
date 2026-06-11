@@ -1,77 +1,75 @@
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-
-# This allows us to import our database schema from the app folder
-import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from app.models.schema import KnowledgeChunk
 
 load_dotenv()
 
-# Load credentials
 DATABASE_URL = os.getenv("DATABASE_URL")
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# These are the simulated company policies the PDF asked us to build
 POLICIES = {
-    "pricing_policy.md": (
-        "Pricing & Discounts Policy: Enterprise plan costs $5,000/month billed annually. "
-        "We offer a 20% discount exclusively for registered 501(c)(3) non-profit organizations. "
-        "Academic and educational institutions qualify for a 15% discount for classroom use."
-    ),
-    "sla_policy.md": (
-        "SLA Policy: Premium Enterprise contracts guarantee a 99.9% uptime. "
-        "If system availability falls below 99.9% in a billing cycle, customers are eligible for a 10% credit. "
-        "If system availability falls below 99.0%, a 25% bill credit is automatically issued upon human validation."
-    ),
-    "refund_policy.md": (
-        "Refund Policy: Customers can request a full refund within 14 days of original purchase. "
-        "Requests made between 15 and 30 days are eligible for a 50% pro-rata credit or refund depending on contract type. "
-        "No refunds are issued after 30 days under standard circumstances."
-    ),
-    "compliance_faq.md": (
-        "Compliance FAQ: Our infrastructure is fully HIPAA compliant and SOC2 certified. "
-        "GDPR Data Portability Request Handling: Under Article 20, individuals have the right to receive their personal data. "
-        "When a GDPR request is made, legal must acknowledge within 30 days. Do not send generic auto-replies."
-    ),
-    "escalation_matrix.md": (
-        "Escalation Matrix: Security threats, active ransomware notifications, and data breaches must never receive "
-        "automated AI email responses. Lock down the ticket, flag as Critical, and instantly escalate to the Security Response Unit."
-    )
+    "pricing_policy.md": "Pricing Policy: We offer a 20% discount exclusively for registered 501(c)(3) non-profit organizations.",
+    "sla_policy.md": "SLA Policy: If system availability falls below 99.0%, a 25% bill credit is issued.",
+    "escalation_matrix.md": "Escalation Matrix: Security threats and active ransomware must never receive automated replies. Escalate to Security."
 }
 
-def seed_vectors():
-    # Connect to Supabase
+def force_seed_database():
     engine = create_engine(DATABASE_URL)
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    print("Generating Gemini embeddings and seeding Supabase vector database...")
-    
-    # Loop through each policy document
-    for filename, text in POLICIES.items():
-        # Call Google's embedding model to turn the text into 768 numbers
-        embedding_result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text
-        )
-        embedding = embedding_result['embedding']
+    print("--- STARTING DIAGNOSTIC SEEDER ---")
 
-        # Save the text and the vector to the database
-        chunk = KnowledgeChunk(
-            source_doc=filename,
-            chunk_text=text,
-            embedding=embedding
-        )
-        session.add(chunk)
-    
-    # Commit changes
-    session.commit()
-    session.close()
-    print("Database seeding completed successfully!")
+    try:
+        # 1. Force drop and recreate the table with 3072 dimensions
+        print("1. Resetting database table...")
+        session.execute(text("DROP TABLE IF EXISTS knowledge_chunks;"))
+        session.execute(text("""
+            CREATE TABLE knowledge_chunks (
+                id SERIAL PRIMARY KEY,
+                source_doc VARCHAR,
+                chunk_text TEXT,
+                embedding vector(3072),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        session.commit()
+        print("   -> Table created successfully with 3072 dimensions.")
+
+        # 2. Test the Embedding generation using the stable 001 model
+        print("\n2. Generating embeddings from Gemini...")
+        for filename, doc_text in POLICIES.items():
+            try:
+                response = genai.embed_content(
+                    model="models/gemini-embedding-001",
+                    content=doc_text
+                )
+                vec = response['embedding']
+                print(f"   -> [SUCCESS] Generated vector for {filename} (Size: {len(vec)} dimensions)")
+                
+                if len(vec) != 3072:
+                    print(f"   -> [FATAL ERROR] Expected 3072 dimensions, but got {len(vec)}.")
+                    return
+
+                # 3. Save to database using raw SQL
+                session.execute(
+                    text("INSERT INTO knowledge_chunks (source_doc, chunk_text, embedding) VALUES (:doc, :txt, :emb)"),
+                    {"doc": filename, "txt": doc_text, "emb": f"[{','.join(map(str, vec))}]"}
+                )
+                session.commit()
+                print(f"   -> [SAVED] {filename} securely stored in Supabase.")
+
+            except Exception as inner_e:
+                print(f"   -> [API/DB ERROR] Failed on {filename}: {str(inner_e)}")
+                session.rollback()
+
+    except Exception as e:
+        print(f"\n[CRITICAL FAILURE] {str(e)}")
+    finally:
+        session.close()
+        print("\n--- SEEDING PROCESS COMPLETE ---")
 
 if __name__ == "__main__":
-    seed_vectors()
+    force_seed_database()

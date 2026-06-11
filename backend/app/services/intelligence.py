@@ -17,7 +17,7 @@ def get_rag_context(email_body: str, db: Session) -> str:
     try:
         # Embed the incoming email text
         embedding_result = genai.embed_content(
-            model="models/text-embedding-004",
+            model="models/gemini-embedding-001",
             content=email_body
         )
         query_embedding = embedding_result['embedding']
@@ -28,7 +28,7 @@ def get_rag_context(email_body: str, db: Session) -> str:
         # Execute the math search directly in the database
         sql_query = text("""
             SELECT chunk_text FROM knowledge_chunks 
-            ORDER BY embedding <=> :query_embedding::vector 
+            ORDER BY embedding <=> CAST(:query_embedding AS vector) 
             LIMIT 1;
         """)
         
@@ -63,7 +63,7 @@ def analyze_email_intelligence(email_body: str, subject: str, db: Session) -> di
 
     try:
         # 3. Call Gemini Flash, enforcing application/json mode
-        model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=system_prompt)
+        model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=system_prompt)
         response = model.generate_content(
             f"Subject: {subject}\nBody: {email_body}",
             generation_config=genai.GenerationConfig(

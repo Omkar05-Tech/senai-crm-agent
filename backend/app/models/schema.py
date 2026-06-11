@@ -56,5 +56,18 @@ class KnowledgeChunk(Base):
     id = Column(Integer, primary_key=True, index=True)
     source_doc = Column(String, nullable=False)
     chunk_text = Column(Text, nullable=False)
-    embedding = Column(Vector(768)) # Fixed vector dimensions matching standard Gemini flash layouts
+    embedding = Column(Vector(3072)) # Fixed vector dimensions matching standard Gemini flash layouts
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Action(Base):
+    __tablename__ = "actions"
+    id = Column(Integer, primary_key=True, index=True)
+    email_id = Column(Integer, ForeignKey("emails.id")) # Links to the specific email
+    agent_reasoning_log = Column(JSONB, nullable=True) # Saves the Thought -> Action -> Observation array
+    action_type = Column(String) # Auto-Reply | Escalate | Legal-Flag
+    proposed_content = Column(Text, nullable=True)
+    is_approved = Column(Boolean, default=False)
+    executed_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    email = relationship("Email")
