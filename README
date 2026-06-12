@@ -1,73 +1,62 @@
-⚡ SenAI Agentic CRM Intelligence Platform
+## ⚡ SenAI Agentic CRM Intelligence Platform
 A production-grade, AI-powered Customer Relationship Management (CRM) system designed to autonomously triage high-volume inboxes, execute agentic workflows, and provide real-time market intelligence.
 
 This repository represents a complete, end-to-end implementation of the SenAI Technical Assessment, passing all core requirements, advanced modules, special edge-case scenarios, and multiple bonus objectives.
 
-🛠️ Tech Stack & Engineering Choices
-Frontend
+## 🛠️ Tech Stack & Engineering Choices
+# Frontend
 React & Vite: Chosen for blazing-fast Hot Module Replacement (HMR) during development and highly optimized production builds.
 
 Tailwind CSS: Utilized to build a premium, custom "Slate & Glass" design system without the bloat of heavy component libraries.
 
 Recharts & Lucide React: Lightweight, SVG-based charting and iconography for the analytics dashboard and visual hierarchy.
 
-Backend
+# Backend
 FastAPI (Python): The backbone of the API. Chosen for its native asynchronous support (critical for the background web scraper) and automatic OpenAPI/Swagger documentation.
 
 Pydantic: Enforces strict data validation and schema sanitization (e.g., stripping malformed HTML and truncating 10,000+ character emails before they ever hit the database).
 
 SQLAlchemy: Provides a secure, SQL-injection-resistant ORM layer while allowing raw SQL drop-ins for complex pgvector queries.
 
-AI & Intelligence
+# AI & Intelligence
 Google Gemini (2.5 Flash & Embeddings): Chosen for its massive context window and rapid inference speed.
 
 Custom ReAct Engine: Instead of using LangChain's heavy abstraction, a native Reason + Act loop was built to ensure total deterministic control over circuit breakers and compliance rules.
 
-Database & Infrastructure
+# Database & Infrastructure
 PostgreSQL (Supabase) + pgvector: Allows storing highly relational CRM data (threads, contacts, audit logs) alongside vector embeddings in a single, unified transaction layer.
 
 Docker Compose: Containerizes the entire environment for a guaranteed "works on my machine" one-click deployment.
 
-🚀 Quickstart & Setup Guide
+# 🚀 Quickstart & Setup Guide
 1. Clone the Repository
-
-Bash
-
 
 git clone https://github.com/Omkar05-Tech/senai-crm-agent.git
 cd senai-crm-agent
+
 2. Environment Configuration
 Create a .env file in the backend/ directory:
 
-Code snippet
-
-
 DATABASE_URL="postgresql://postgres.[YOUR_PROJECT]:[YOUR_PASSWORD]@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
 GEMINI_API_KEY="AIzaSyYourGeminiKeyHe....."
+
 3. Docker Deployment (Bonus Objective Achieved)
 Spin up the entire stack (FastAPI Backend + React/Vite Frontend) with a single command:
 
-Bash
-
-
 docker-compose up -d --build
+
 4. Seed the Knowledge Base (RAG Pipeline)
 Chunk the 6 required Markdown policies into 400-token overlapping segments and generate 768-dim embeddings in Supabase:
 
-Bash
-
-
 docker exec -it senai_backend python seed_rag.py
+
 5. Run the Live Email Simulation
 Stream the advanced dataset into the ingest endpoint (simulates real-time webhook traffic with idempotency):
 
-Bash
-
-
 python stream_simulator.py
-📂 Project Structure
-Plaintext
 
+## 📂 Project Structure
+Plaintext
 
 .
 ├── frontend/                 # React/Vite Premium UI Dashboard
@@ -94,7 +83,8 @@ Plaintext
 │   └── email-data-advanced.json # Advanced evaluation dataset
 ├── docker-compose.yml        # Multi-container orchestration (One-click start)
 └── stream_simulator.py       # Async script to simulate live webhook email traffic
-📖 The Engineering Story: Architectural Philosophy
+
+# 📖 The Engineering Story: Architectural Philosophy
 Building an autonomous agent for an enterprise inbox is not just about connecting to an LLM API; it requires guardrails, efficiency, and deterministic overrides. Here is the story of how this system was architected:
 
 The "Cost & Speed" Problem (Layered Intelligence): Sending every inbound email directly to an LLM is slow and expensive. To solve this, I built a Deterministic Heuristic Pre-Filter (Layer 1). This sub-10ms regex engine catches Spam, Security Threats (Ransomware), and Legal Threats (GDPR) synchronously. Only legitimate, complex emails are passed to the Gemini LLM Engine (Layer 2) for deep semantic classification.
@@ -105,9 +95,7 @@ The "Database Limit" Problem (Matryoshka Representation): During the RAG impleme
 
 The "Anti-Bot" Problem (Ethical Web Scraping): The Component 5 Web Intelligence scraper targets sites like Trustpilot, which actively block bots. To handle this, the scraper runs purely asynchronously via FastAPI BackgroundTasks, implements strict urllib.robotparser (robots.txt) compliance, and features a graceful fallback to a 6-hour cache if a timeout occurs, ensuring the main email pipeline never halts.
 
-🏗️ System Architecture & Data Flow
-Code snippet
-
+# 🏗️ System Architecture & Data Flow
 
 graph TD
     A[stream_simulator.py] -->|POST /api/ingest| B(FastAPI Router)
@@ -129,7 +117,8 @@ graph TD
     D --> J
     
     K[React Premium UI] -->|GET / Threads / Analytics| B
-🗄️ Database ER Diagram & Indexing Strategy
+
+# 🗄️ Database ER Diagram & Indexing Strategy
 To meet the strict latency requirements in Component 6, the schema is heavily indexed.
 
 GET /threads/{email} (<100ms): B-Tree index on sender_email + thread_id provides O(log N) lookups.
@@ -137,9 +126,6 @@ GET /threads/{email} (<100ms): B-Tree index on sender_email + thread_id provides
 Sentiment Analytics: Composite B-Tree on (sender, timestamp) avoids full-table Sequential Scans for 30-day aggregations.
 
 RAG Similarity Search (<200ms): HNSW over pgvector utilizing Cosine Distance for Approximate Nearest Neighbor lookups.
-
-Code snippet
-
 
 erDiagram
     CONTACTS ||--o{ THREADS : "owns"
@@ -186,7 +172,8 @@ erDiagram
         jsonb scraped_data
         timestamp expires_at
     }
-🛡️ Special Scenarios & Edge Cases Handled
+
+# 🛡️ Special Scenarios & Edge Cases Handled
 The system is rigorously tested against the 5 Mandatory Special Scenarios and Automatic Disqualifiers:
 
 Bob Jones (Escalation + Legal): The Agent loop executes a 5-step ReAct sequence: checks thread history -> queries RAG for SLA credits -> checks CRM account status -> explicitly calls flag_for_legal() -> creates an internal escalation ticket without auto-replying.
@@ -201,12 +188,12 @@ Alice Smith (Conflicting Signals): "I love the product but hate the price and wa
 
 Spam Auto-Reply Loop Prevented: Any email classified as Spam explicitly bypasses the Agent Execution block entirely, ensuring the system never accidentally drafts an auto-reply to a spam/phishing address.
 
-✨ Bonus Challenges Completed
+# ✨ Bonus Challenges Completed
 Docker Compose Deployment: Full one-command startup for Backend, Frontend, and dependencies.
 
 Email Thread Summarization: Added an executive feature to GET /threads. If a thread contains 5+ emails, Gemini automatically generates a 3-sentence executive summary of the conversation.
 
-⚠️ Known Limitations & Future Roadmap
+# ⚠️ Known Limitations & Future Roadmap
 Asynchronous UI Updates: The React Dashboard currently utilizes interval polling. Implementing true WebSocket streaming (FastAPI WebSockets) would reduce network overhead but was skipped to prioritize core data integrity and RAG pipeline architecture.
 
 Scraper Brittleness: Web Intelligence relies on BeautifulSoup. As target DOMs change, the scraper requires maintenance. A future iteration would utilize headless browser automation (Playwright/Puppeteer) combined with proxy rotation.
