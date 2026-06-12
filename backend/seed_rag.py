@@ -1,29 +1,28 @@
 import os
+import glob
 import google.generativeai as genai
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-POLICIES = {
-    "pricing_policy.md": "Pricing Policy: We offer a 20% discount exclusively for registered 501(c)(3) non-profit organizations.",
-    "sla_policy.md": "SLA Policy: If system availability falls below 99.0%, a 25% bill credit is issued.",
-    "escalation_matrix.md": "Escalation Matrix: Security threats and active ransomware must never receive automated replies. Escalate to Security."
-}
+# The path where we saved the 6 markdown files
+DOCS_DIR = "data/knowledge_base"
 
 def force_seed_database():
     engine = create_engine(DATABASE_URL)
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    print("--- STARTING DIAGNOSTIC SEEDER ---")
+    print("--- STARTING ENTERPRISE RAG SEEDER ---")
 
     try:
-        # 1. Force drop and recreate the table with 3072 dimensions
+        # 1. Reset the table
         print("1. Resetting database table...")
         session.execute(text("DROP TABLE IF EXISTS knowledge_chunks;"))
         session.execute(text("""
@@ -38,31 +37,57 @@ def force_seed_database():
         session.commit()
         print("   -> Table created successfully with 3072 dimensions.")
 
-        # 2. Test the Embedding generation using the stable 001 model
-        print("\n2. Generating embeddings from Gemini...")
-        for filename, doc_text in POLICIES.items():
+        # 2. Read and Chunk the Markdown Files
+        print("\n2. Reading and Chunking Knowledge Base...")
+        markdown_files = glob.glob(os.path.join(DOCS_DIR, "*.md"))
+        
+        if not markdown_files:
+            print(f"❌ Error: No markdown files found in {DOCS_DIR}")
+            return
+
+        # REQUIREMENT: Chunk into 300-500 tokens with overlap
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=400, # Approx tokens/chars depending on config
+            chunk_overlap=50,
+            separators=["\n\n", "\n", ".", " "]
+        )
+
+        all_chunks = []
+        for file_path in markdown_files:
+            filename = os.path.basename(file_path)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                
+            chunks = text_splitter.split_text(content)
+            for chunk in chunks:
+                all_chunks.append({"filename": filename, "text": chunk})
+                
+        print(f"   -> Successfully created {len(all_chunks)} overlapping chunks.")
+
+        # 3. Generate Embeddings and Save to Supabase
+        print("\n3. Generating embeddings from Gemini...")
+        for item in all_chunks:
+            filename = item["filename"]
+            doc_text = item["text"]
+            
             try:
                 response = genai.embed_content(
                     model="models/gemini-embedding-001",
-                    content=doc_text
+                    content=doc_text,
+                    output_dimensionality=768
                 )
                 vec = response['embedding']
-                print(f"   -> [SUCCESS] Generated vector for {filename} (Size: {len(vec)} dimensions)")
                 
-                if len(vec) != 3072:
-                    print(f"   -> [FATAL ERROR] Expected 3072 dimensions, but got {len(vec)}.")
-                    return
-
-                # 3. Save to database using raw SQL
+                # Database insertion using raw SQL
                 session.execute(
                     text("INSERT INTO knowledge_chunks (source_doc, chunk_text, embedding) VALUES (:doc, :txt, :emb)"),
                     {"doc": filename, "txt": doc_text, "emb": f"[{','.join(map(str, vec))}]"}
                 )
                 session.commit()
-                print(f"   -> [SAVED] {filename} securely stored in Supabase.")
+                print(f"   -> [SAVED] Chunk from {filename} securely stored in Supabase.")
 
             except Exception as inner_e:
-                print(f"   -> [API/DB ERROR] Failed on {filename}: {str(inner_e)}")
+                print(f"   -> [API/DB ERROR] Failed on chunk from {filename}: {str(inner_e)}")
                 session.rollback()
 
     except Exception as e:

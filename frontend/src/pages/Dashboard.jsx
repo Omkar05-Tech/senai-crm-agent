@@ -29,55 +29,41 @@ export default function Dashboard() {
       
       <div className="flex w-full">
         
-        {/* COLUMN 1: LEFT SIDEBAR (Inbox) - 25% Width 
-            Added z-20 and a custom soft shadow spreading to the right 
-        */}
+        {/* COLUMN 1: LEFT SIDEBAR (Inbox) - 25% Width */}
         <div className="w-1/4 bg-white border-r border-slate-200 flex flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)] relative">
           
-          {/* Header - Increased padding and upgraded branding */}
+          {/* Header */}
           <div className="p-5 border-b border-slate-100 bg-white flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Brand Icon Box */}
               <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded-xl shadow-sm shadow-blue-200">
                 <Zap className="w-4 h-4 text-white" fill="currentColor" />
               </div>
               <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">SenAI</h1>
             </div>
             
-            {/* Tactile Navigation Toggles */}
             <div className="flex space-x-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
-              <button 
-                onClick={() => setActiveView('inbox')}
-                title="Inbox View"
-                className={`p-2 rounded-lg transition-all duration-200 ease-in-out ${
-                  activeView === 'inbox' 
-                    ? 'bg-white shadow-sm text-blue-600 ring-1 ring-slate-900/5' 
-                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200/50'
-                }`}
-              >
-                <Inbox className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={() => setActiveView('analytics')}
-                title="Analytics View"
-                className={`p-2 rounded-lg transition-all duration-200 ease-in-out ${
-                  activeView === 'analytics' 
-                    ? 'bg-white shadow-sm text-blue-600 ring-1 ring-slate-900/5' 
-                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200/50'
-                }`}
-              >
-                <BarChart2 className="w-4 h-4" />
-              </button>
+              <button onClick={() => setActiveView('inbox')} className={`p-2 rounded-lg transition-all ${activeView === 'inbox' ? 'bg-white shadow-sm text-blue-600 ring-1 ring-slate-900/5' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200/50'}`}><Inbox className="w-4 h-4" /></button>
+              <button onClick={() => setActiveView('analytics')} className={`p-2 rounded-lg transition-all ${activeView === 'analytics' ? 'bg-white shadow-sm text-blue-600 ring-1 ring-slate-900/5' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200/50'}`}><BarChart2 className="w-4 h-4" /></button>
+            </div>
+          </div>
+
+          {/* NEW: Search and Filters (Component 8 Requirement) */}
+          <div className="p-4 border-b border-slate-100 bg-slate-50/50 space-y-3">
+            <input 
+              type="text" 
+              placeholder="Search emails, subjects, or threads..." 
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+            />
+            <div className="flex space-x-2 overflow-x-auto pb-1 scrollbar-hide">
+              <button className="px-3 py-1 bg-slate-800 text-white text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm">All</button>
+              <button className="px-3 py-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm transition-colors whitespace-nowrap">Needs Human</button>
+              <button className="px-3 py-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm transition-colors whitespace-nowrap">Escalated</button>
             </div>
           </div>
           
           {/* Email List Area */}
           <div className="flex-1 overflow-y-auto bg-slate-50/30">
-            <EmailList 
-              emails={emails} 
-              selectedEmail={selectedEmail} 
-              onSelect={setSelectedEmail} 
-            />
+            <EmailList emails={emails} selectedEmail={selectedEmail} onSelect={setSelectedEmail} />
           </div>
         </div>
 

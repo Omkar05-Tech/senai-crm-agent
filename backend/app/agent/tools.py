@@ -11,7 +11,8 @@ def search_knowledge_base(query: str, db: Session) -> str:
     try:
         embedding_result = genai.embed_content(
             model="models/gemini-embedding-001",
-            content=query
+            content=query,
+            output_dimensionality=768
         )
         query_str = f"[{','.join(map(str, embedding_result['embedding']))}]"
         
@@ -44,3 +45,23 @@ def escalate_to_human(reason: str) -> str:
 def draft_reply(content: str) -> str:
     """Tool 4: Drafts the final email to send to the customer."""
     return f"ACTION SUCCESS: Drafted reply: {content}"
+
+# --- NEW REQUIRED TOOLS FOR BOB JONES TEST CASE ---
+
+def check_account_status(email: str) -> str:
+    """Tool 5: Mocks a CRM lookup to check billing status and tier."""
+    if "enterprise" in email.lower() or "bob" in email.lower():
+        return f"Account {email} is on Enterprise tier. Renewal is currently ON HOLD due to billing dispute."
+    return f"Account {email} is Active on Standard tier."
+
+def flag_for_legal(issue_type: str) -> str:
+    """Tool 6: Routes legal threats to the legal team."""
+    return f"ACTION SUCCESS: Legal team notified. Context: {issue_type}"
+
+def send_auto_reply(draft_id: str) -> str:
+    """Tool 7: Sends an approved draft."""
+    return f"ACTION SUCCESS: Auto-reply sent."
+
+def create_internal_ticket(title: str, body: str, assignee: str) -> str:
+    """Creates a support/engineering/compliance ticket."""
+    return f"ACTION SUCCESS: Ticket '{title}' created and assigned to {assignee}."

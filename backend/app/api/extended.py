@@ -1,13 +1,16 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text # <-- Added 'text' for raw SQL queries
 from typing import Optional, List, Dict, Any
 
 from app.core.database import get_db
 from app.models.schema import Email, Contact, Thread
 import uuid
 from datetime import datetime, timezone
+from app.services.scraper import WEB_CACHE, fetch_web_intelligence
+
+import google.generativeai as genai # <-- Added Gemini for real-time query embedding
 
 router = APIRouter()
 
@@ -22,6 +25,46 @@ class ContactStatusUpdate(BaseModel):
     status: str
 
 # --- DYNAMIC ENDPOINTS (Hooked up to your real database) ---
+
+@router.get("/rag/search")
+def search_knowledge_base(q: str, db: Session = Depends(get_db)):
+    """Debug endpoint: query KB and return chunks + scores (DYNAMIC via pgvector)"""
+    
+    try:
+        # 1. Embed the search query using Gemini
+        response = genai.embed_content(
+            model="models/gemini-embedding-001",
+            content=q,
+            output_dimensionality=768
+        )
+        query_vec = response['embedding']
+        formatted_vec = f"[{','.join(map(str, query_vec))}]"
+        
+        # 2. Retrieve top-3 relevant chunks using pgvector cosine similarity
+        sql_query = text("""
+            SELECT source_doc, chunk_text, 1 - (embedding <=> :vec) AS similarity
+            FROM knowledge_chunks
+            ORDER BY embedding <=> :vec
+            LIMIT 3;
+        """)
+        
+        results = db.execute(sql_query, {"vec": formatted_vec}).fetchall()
+        
+        formatted_results = []
+        for row in results:
+            formatted_results.append({
+                "source": row[0],
+                "content": row[1],
+                "similarity_score": round(row[2], 4) if row[2] else 0.0
+            })
+            
+        return {
+            "query": q,
+            "results_count": len(formatted_results),
+            "chunks": formatted_results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"RAG Search failed: {str(e)}")
 
 @router.get("/analytics/category-breakdown")
 def get_category_breakdown(days: int = 30, db: Session = Depends(get_db)):
@@ -59,66 +102,61 @@ def get_sentiment_trend(sender: Optional[str] = None, days: int = 30, db: Sessio
     
     return {"trend_average": round(avg_score, 2), "data_points": len(scores)}
 
-@router.get("/threads/{contact_email}")
-def get_contact_threads(contact_email: str, db: Session = Depends(get_db)):
-    """Full conversation thread with all emails, actions, and agent logs (DYNAMIC)"""
+# @router.get("/threads/{contact_email}")
+# def get_contact_threads(contact_email: str, db: Session = Depends(get_db)):
+#     """Full conversation thread with all emails, actions, and agent logs (DYNAMIC)"""
     
-    # Query the threads belonging to this email, and eagerly load the emails to ensure <100ms performance
-    threads = db.query(Thread)\
-        .filter(Thread.sender_email == contact_email)\
-        .all()
+#     threads = db.query(Thread)\
+#         .filter(Thread.sender_email == contact_email)\
+#         .all()
         
-    if not threads:
-        return {"contact": contact_email, "threads": [], "message": "No threads found for this contact."}
+#     if not threads:
+#         return {"contact": contact_email, "threads": [], "message": "No threads found for this contact."}
 
-    formatted_threads = []
+#     formatted_threads = []
     
-    for thread in threads:
-        # Fetch emails for this specific thread, ordered chronologically
-        emails = db.query(Email)\
-            .filter(Email.thread_id == thread.thread_id)\
-            .order_by(Email.timestamp.asc())\
-            .all()
+#     for thread in threads:
+#         emails = db.query(Email)\
+#             .filter(Email.thread_id == thread.thread_id)\
+#             .order_by(Email.timestamp.asc())\
+#             .all()
             
-        thread_data = {
-            "thread_id": thread.thread_id,
-            "subject": thread.subject,
-            "status": thread.status,
-            "email_count": len(emails),
-            "emails": []
-        }
+#         thread_data = {
+#             "thread_id": thread.thread_id,
+#             "subject": thread.subject,
+#             "status": thread.status,
+#             "email_count": len(emails),
+#             "emails": []
+#         }
         
-        for email in emails:
-            email_data = {
-                "message_id": email.message_id,
-                "timestamp": email.timestamp,
-                "body": email.body,
-                "category": email.category,
-                "urgency": email.urgency,
-                "status": email.status
-            }
-            thread_data["emails"].append(email_data)
+#         for email in emails:
+#             email_data = {
+#                 "message_id": email.message_id,
+#                 "timestamp": email.timestamp,
+#                 "body": email.body,
+#                 "category": email.category,
+#                 "urgency": email.urgency,
+#                 "status": email.status
+#             }
+#             thread_data["emails"].append(email_data)
             
-        formatted_threads.append(thread_data)
+#         formatted_threads.append(thread_data)
 
-    return {
-        "contact": contact_email,
-        "total_threads": len(formatted_threads),
-        "threads": formatted_threads
-    }
+#     return {
+#         "contact": contact_email,
+#         "total_threads": len(formatted_threads),
+#         "threads": formatted_threads
+#     }
 
 @router.post("/respond/{email_id}")
 def send_response(email_id: int, payload: RespondPayload, db: Session = Depends(get_db)):
     """Send a reply; updates status; appends to thread (DYNAMIC)"""
-    # 1. Find the email the user is replying to
     original_email = db.query(Email).filter(Email.id == email_id).first()
     if not original_email:
         raise HTTPException(status_code=404, detail="Original email not found")
 
-    # 2. Update the original email's status
     original_email.status = "Replied"
 
-    # 3. Insert the new reply into the database under the same thread
     reply_email = Email(
         thread_id=original_email.thread_id,
         message_id=f"msg_reply_{uuid.uuid4().hex[:8]}",
@@ -144,12 +182,82 @@ def update_contact_status(email: str, payload: ContactStatusUpdate, db: Session 
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
         
-    # Update the status and save to the database
     contact.status = payload.status
     db.commit()
     db.refresh(contact)
     
     return {"email": contact.email, "new_status": contact.status}
+
+@router.get("/intelligence/reputation")
+async def get_company_reputation(company_name: str = "SenAI"):
+    """Latest scraped public sentiment for company (DYNAMIC)"""
+    # If it's not in cache, force a fetch
+    if company_name not in WEB_CACHE:
+        await fetch_web_intelligence(company_name)
+        
+    return WEB_CACHE.get(company_name, {}).get("data", {"status": "pending"})
+
+@router.get("/threads/{contact_email}")
+def get_contact_threads(contact_email: str, db: Session = Depends(get_db)):
+    """Full conversation thread with all emails, actions, and agent logs (DYNAMIC)"""
+    
+    threads = db.query(Thread)\
+        .filter(Thread.sender_email == contact_email)\
+        .all()
+        
+    if not threads:
+        return {"contact": contact_email, "threads": [], "message": "No threads found for this contact."}
+
+    formatted_threads = []
+    
+    for thread in threads:
+        emails = db.query(Email)\
+            .filter(Email.thread_id == thread.thread_id)\
+            .order_by(Email.timestamp.asc())\
+            .all()
+            
+        thread_data = {
+            "thread_id": thread.thread_id,
+            "subject": thread.subject,
+            "status": thread.status,
+            "email_count": len(emails),
+            "summary": None, # NEW: Summary field
+            "emails": []
+        }
+        
+        # --- BONUS: Email Thread Summarization ---
+        # If thread has 5 or more emails, generate an executive summary
+        if len(emails) >= 5:
+            try:
+                # Combine all email bodies to give context to the LLM
+                full_text = "\n".join([f"Email {i+1}: {e.body}" for i, e in enumerate(emails)])
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                summary_response = model.generate_content(
+                    f"Summarize this email thread in exactly 3 concise sentences for an executive brief:\n\n{full_text}"
+                )
+                thread_data["summary"] = summary_response.text.strip()
+            except Exception as e:
+                thread_data["summary"] = "Summary generation failed."
+        # -----------------------------------------
+        
+        for email in emails:
+            email_data = {
+                "message_id": email.message_id,
+                "timestamp": email.timestamp,
+                "body": email.body,
+                "category": email.category,
+                "urgency": email.urgency,
+                "status": email.status
+            }
+            thread_data["emails"].append(email_data)
+            
+        formatted_threads.append(thread_data)
+
+    return {
+        "contact": contact_email,
+        "total_threads": len(formatted_threads),
+        "threads": formatted_threads
+    }
 
 # --- STATIC STUB ENDPOINTS (To satisfy Swagger requirements safely) ---
 
@@ -164,10 +272,6 @@ def edit_draft(id: int, payload: DraftUpdate):
 @router.post("/drafts/{id}/approve")
 def approve_draft(id: int):
     return {"status": "success", "action": "draft_approved_and_sent", "draft_id": id}
-
-@router.get("/intelligence/reputation")
-def get_company_reputation(company_name: str = "SenAI"):
-    return {"company": company_name, "sentiment": "Positive", "sources": ["G2", "Trustpilot"]}
 
 @router.post("/agent/dry-run/{email_id}")
 def run_agent_dry_run(email_id: int):
